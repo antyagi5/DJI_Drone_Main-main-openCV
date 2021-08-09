@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/DJI_Drone_Main-main.iml" filepath="$PROJECT_DIR$/.idea/modules/DJI_Drone_Main-main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/DJI_Drone_Main-main.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/DJI_Drone_Main-main.app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/opencvlib430/DJI_Drone_Main-main.opencvlib430.iml" filepath="$PROJECT_DIR$/.idea/modules/opencvlib430/DJI_Drone_Main-main.opencvlib430.iml" />
+    </modules>
+  </component>
+</project>
