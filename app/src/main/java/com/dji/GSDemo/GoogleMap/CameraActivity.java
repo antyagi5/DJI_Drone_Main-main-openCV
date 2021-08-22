@@ -19,7 +19,7 @@ import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
-import android.widget.ImageView;
+import android.os.AsyncTask; // AsyncTask for setting object recognition label for TextView
 
 import com.dji.GSDemo.GoogleMap.cnn.CNNExtractorService;
 import com.dji.GSDemo.GoogleMap.cnn.impl.CNNExtractorServiceImpl;
@@ -66,11 +66,10 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
     private Button mCaptureBtn, mShootPhotoModeBtn, mRecordVideoModeBtn, mMapBtn;
     private ToggleButton mRecordBtn;
     private TextView recordingTime;
-    private ImageView mImag;
-
+    private TextView predictedClassLabel;
     private Handler handler;
 
-    // opencv
+    // OpenCV
     private static final String IMAGENET_CLASSES = "imagenet_classes.txt";
     private static final String MODEL_FILE = "pytorch_mobilenet.onnx";
 
@@ -79,7 +78,7 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
 
     private CNNExtractorService cnnService;
 
-    // opencv
+    // OpenCV
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
@@ -196,9 +195,6 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
                 });
     }
 
-    public void onCameraViewStopped() {
-    }
-
     private static String getPath(String file, Context context) {
         AssetManager assetManager = context.getAssets();
         BufferedInputStream inputStream;
@@ -261,7 +257,6 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
     private void initUI() {
         // init mVideoSurface
         mVideoSurface = (TextureView)findViewById(R.id.video_previewer_surface);
-        mImag = (ImageView) findViewById(R.id.processedframes);
 
         recordingTime = (TextView) findViewById(R.id.timer);
         mCaptureBtn = (Button) findViewById(R.id.btn_capture);
@@ -269,6 +264,7 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
         mShootPhotoModeBtn = (Button) findViewById(R.id.btn_shoot_photo_mode);
         mRecordVideoModeBtn = (Button) findViewById(R.id.btn_record_video_mode);
         mMapBtn = (Button) findViewById(R.id.btn_map);
+        predictedClassLabel = (TextView)  findViewById(R.id.classLabel); // For object recognition label
 
         if (null != mVideoSurface) {
             mVideoSurface.setSurfaceTextureListener(this);
@@ -281,6 +277,7 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
         mMapBtn.setOnClickListener(this);
 
         recordingTime.setVisibility(View.INVISIBLE);
+        predictedClassLabel.setVisibility(View.VISIBLE);
 
         mRecordBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -345,18 +342,18 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
 
     @Override
     public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-
+        // Convert SurfaceTexture to Bitmap
         final Bitmap frame = mVideoSurface.getBitmap();
-        //Do whatever you want with the bitmap image here on every frame
+        // Convert Bitmap to Mat
         Mat tmp = new Mat (frame.getHeight(), frame.getWidth(), CvType.CV_8UC1);
+        Utils.bitmapToMat(frame, tmp);
+        // Get path for pre-trained model file and obtain object recognition label
         String classesPath = getPath(IMAGENET_CLASSES, this);
         String predictedClass = cnnService.getPredictedLabel(tmp, opencvNet, classesPath);
-        // place the predicted label on the image
-        Imgproc.putText(tmp, predictedClass, new Point(200, 100), Imgproc.FONT_HERSHEY_SIMPLEX, 2, new Scalar(255, 121, 0), 3);
+        // Use AsyncTask to set object recognition label
+        AsyncTaskRunner runner = new AsyncTaskRunner();
+        runner.execute(predictedClass);
 
-        Bitmap img_bitmap = Bitmap.createBitmap(tmp.cols(), tmp.rows(),Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(tmp, img_bitmap);
-        mImag.setImageBitmap(img_bitmap);
     }
 
     public void showToast(final String msg) {
@@ -477,5 +474,22 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
             }); // Execute the stopRecordVideo API
         }
 
+    }
+
+    // AsyncTask for putting object recognition label
+    private class AsyncTaskRunner extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        protected String doInBackground(String... label) {
+            return label[0];
+        }
+
+        protected void onPostExecute(String result) {
+            predictedClassLabel.setText(result);
+        }
     }
 }
