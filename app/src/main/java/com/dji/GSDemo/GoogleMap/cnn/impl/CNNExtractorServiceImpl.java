@@ -64,20 +64,20 @@ public class CNNExtractorServiceImpl implements CNNExtractorService {
         Imgproc.cvtColor(image, image, Imgproc.COLOR_RGBA2RGB);
 
         // create empty Mat images for float conversions
-        Mat imgFloat = new Mat(image.rows(), image.cols(), CvType.CV_32FC3);
+        //Mat imgFloat = new Mat(image.rows(), image.cols(), CvType.CV_32FC3);
 
         // convert input image to float type
-        image.convertTo(imgFloat, CvType.CV_32FC3, SCALE_FACTOR);
+        //image.convertTo(imgFloat, CvType.CV_32FC3, SCALE_FACTOR);
 
         // resize input image
-        Imgproc.resize(imgFloat, imgFloat, new Size(350, 350));
+        //Imgproc.resize(imgFloat, imgFloat, new Size(350, 350));
 
         // crop input image
-        imgFloat = centerCrop(imgFloat);
+        //imgFloat = centerCrop(imgFloat);
 
         // prepare DNN input
         Mat blob = Dnn.blobFromImage(
-                imgFloat,
+                image,
                 0.007843, /* default scalefactor */
                 new Size(TARGET_IMG_WIDTH, TARGET_IMG_HEIGHT), /* target size */
                 MEAN,  /* mean */

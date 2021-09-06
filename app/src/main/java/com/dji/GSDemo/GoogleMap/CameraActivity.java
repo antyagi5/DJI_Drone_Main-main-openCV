@@ -71,8 +71,8 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
     private Handler handler;
 
     // OpenCV
-    private static final String IMAGENET_CLASSES = "object_detection_classes_coco.txt";
-    private static final String MODEL_FILE = "ssd_mobilenet_v1_10.onnx";
+    private static final String IMAGENET_CLASSES = "imagenet_classes.txt";
+    private static final String MODEL_FILE = "pytorch_mobilenet.onnx";
 
     private CameraBridgeViewBase mOpenCvCameraView;
     private Net opencvNet;
