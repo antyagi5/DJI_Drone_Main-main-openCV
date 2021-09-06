@@ -9,7 +9,7 @@
     <TextureView
         android:id="@+id/video_previewer_surface"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="661dp"
         android:layout_above="@+id/linearLayout"
         android:layout_gravity="center"
         android:layout_marginBottom="-1dp"
@@ -94,7 +94,8 @@
         android:layout_marginEnd="108dp"
         android:layout_marginBottom="188dp"
         android:textColor="@color/zxing_viewfinder_laser"
-        android:textSize="24sp" />
+        android:textSize="24sp"
+        android:visibility="visible" />
 
 
 </RelativeLayout>

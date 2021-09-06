@@ -16,6 +16,7 @@ import android.view.TextureView.SurfaceTextureListener;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -70,8 +71,8 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
     private Handler handler;
 
     // OpenCV
-    private static final String IMAGENET_CLASSES = "imagenet_classes.txt";
-    private static final String MODEL_FILE = "pytorch_mobilenet.onnx";
+    private static final String IMAGENET_CLASSES = "object_detection_classes_coco.txt";
+    private static final String MODEL_FILE = "ssd_mobilenet_v1_10.onnx";
 
     private CameraBridgeViewBase mOpenCvCameraView;
     private Net opencvNet;
@@ -127,6 +128,7 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
         // Neural Network model file reading
         // obtaining converted network
         String onnxModelPath = getPath(MODEL_FILE, this);
+
         if (onnxModelPath.trim().isEmpty()) {
             Log.i(TAG, "Failed to get model file");
             return;
@@ -266,6 +268,7 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
         mMapBtn = (Button) findViewById(R.id.btn_map);
         predictedClassLabel = (TextView)  findViewById(R.id.classLabel); // For object recognition label
 
+
         if (null != mVideoSurface) {
             mVideoSurface.setSurfaceTextureListener(this);
         }
@@ -278,6 +281,7 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
 
         recordingTime.setVisibility(View.INVISIBLE);
         predictedClassLabel.setVisibility(View.VISIBLE);
+
 
         mRecordBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -353,7 +357,6 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
         // Use AsyncTask to set object recognition label
         AsyncTaskRunner runner = new AsyncTaskRunner();
         runner.execute(predictedClass);
-
     }
 
     public void showToast(final String msg) {
