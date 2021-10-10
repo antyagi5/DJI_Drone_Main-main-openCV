@@ -413,7 +413,7 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
                 int top    = (int)(detections.get(i, 4)[0] * rows);
                 int right  = (int)(detections.get(i, 5)[0] * cols);
                 int bottom = (int)(detections.get(i, 6)[0] * rows);
-                String label = classNames[classId] + ": " + confidence;
+                String label = classNames[classId] + ": " + String.format("%.3f", confidence);
                 VisionDetRet newVisionDetRect = new VisionDetRet(left, top, right, bottom, label);
                 rectList.add(newVisionDetRect);
             }
