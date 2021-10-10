@@ -22,12 +22,12 @@ import java.util.ArrayList;
 
 public class CNNExtractorServiceImpl implements CNNExtractorService {
 
-    private static final int TARGET_IMG_WIDTH = 300;
-    private static final int TARGET_IMG_HEIGHT = 300;
+    private static final int TARGET_IMG_WIDTH = 224;
+    private static final int TARGET_IMG_HEIGHT = 244;
 
-    private static final double SCALE_FACTOR = 1;
+    private static final double SCALE_FACTOR = 1/ 255.0;
 
-    private static final Scalar MEAN = new Scalar(127.5, 127.5, 127.5);
+    private static final Scalar MEAN = new Scalar(0.485, 0.456, 0.406);
     private static final Scalar STD = new Scalar(0.229, 0.224, 0.225);
 
     private String TAG;
@@ -64,21 +64,21 @@ public class CNNExtractorServiceImpl implements CNNExtractorService {
         Imgproc.cvtColor(image, image, Imgproc.COLOR_RGBA2RGB);
 
         // create empty Mat images for float conversions
-        //Mat imgFloat = new Mat(image.rows(), image.cols(), CvType.CV_32FC3);
+        Mat imgFloat = new Mat(image.rows(), image.cols(), CvType.CV_32FC3);
 
         // convert input image to float type
-        //image.convertTo(imgFloat, CvType.CV_32FC3, SCALE_FACTOR);
+        image.convertTo(imgFloat, CvType.CV_32FC3, SCALE_FACTOR);
 
         // resize input image
-        //Imgproc.resize(imgFloat, imgFloat, new Size(350, 350));
+        Imgproc.resize(imgFloat, imgFloat, new Size(256, 256));
 
         // crop input image
-        //imgFloat = centerCrop(imgFloat);
+        imgFloat = centerCrop(imgFloat);
 
         // prepare DNN input
         Mat blob = Dnn.blobFromImage(
                 image,
-                0.007843, /* default scalefactor */
+                1.0, /* default scalefactor */
                 new Size(TARGET_IMG_WIDTH, TARGET_IMG_HEIGHT), /* target size */
                 MEAN,  /* mean */
                 true, /* swapRB */
@@ -86,7 +86,7 @@ public class CNNExtractorServiceImpl implements CNNExtractorService {
         );
 
         // divide on std
-        //Core.divide(blob, STD, blob);
+        Core.divide(blob, STD, blob);
 
         return blob;
     }

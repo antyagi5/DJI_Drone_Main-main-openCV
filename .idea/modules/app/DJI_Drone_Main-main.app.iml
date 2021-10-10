@@ -58,7 +58,7 @@
     <orderEntry type="library" scope="TEST" name="Gradle: androidx.test:monitor:1.3.0@aar" level="project" />
     <orderEntry type="library" scope="TEST" name="Gradle: androidx.test.espresso:espresso-idling-resource:3.3.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.http.legacy" level="project" />
-    <orderEntry type="library" name="Gradle: com.dji:dji-sdk-provided:4.15" level="project" />
+    <orderEntry type="library" name="Gradle: com.dji:dji-sdk-provided:4.15.1" level="project" />
     <orderEntry type="library" name="Gradle: com.google.code.gson:gson:2.8.2" level="project" />
     <orderEntry type="library" name="Gradle: com.squareup.wire:wire-runtime:2.2.0" level="project" />
     <orderEntry type="library" name="Gradle: com.squareup.okio:okio:1.15.0" level="project" />
@@ -75,7 +75,7 @@
     <orderEntry type="library" name="Gradle: org.greenrobot:eventbus:3.0.0" level="project" />
     <orderEntry type="library" name="Gradle: com.squareup:otto:1.3.8" level="project" />
     <orderEntry type="library" name="Gradle: androidx.constraintlayout:constraintlayout-solver:1.1.3" level="project" />
-    <orderEntry type="library" name="Gradle: com.dji:dji-sdk:4.15@aar" level="project" />
+    <orderEntry type="library" name="Gradle: com.dji:dji-sdk:4.15.1@aar" level="project" />
     <orderEntry type="library" name="Gradle: androidx.multidex:multidex:2.0.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: com.dji:utmiss:1.0.8@aar" level="project" />
     <orderEntry type="library" name="Gradle: com.dji:library-anti-distortion:4.7@aar" level="project" />

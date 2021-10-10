@@ -1,26 +1,33 @@
 package com.dji.GSDemo.GoogleMap;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
+import android.graphics.PixelFormat;
+import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.PorterDuff;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.util.AttributeSet;
 import android.view.TextureView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.TextureView.SurfaceTextureListener;
-import android.view.WindowManager;
+import android.view.SurfaceView;
+import android.view.SurfaceHolder;
+import android.graphics.Paint;
 import android.widget.Button;
 import android.widget.CompoundButton;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 import android.os.AsyncTask; // AsyncTask for setting object recognition label for TextView
+
 
 import com.dji.GSDemo.GoogleMap.cnn.CNNExtractorService;
 import com.dji.GSDemo.GoogleMap.cnn.impl.CNNExtractorServiceImpl;
@@ -31,18 +38,21 @@ import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.dnn.Net;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Mat;
-import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.core.CvType;
 import org.opencv.android.Utils;
+import org.opencv.core.Size;
+import org.opencv.dnn.Dnn;
+
 
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Arrays;
 
 import dji.common.camera.SettingsDefinitions;
 import dji.common.camera.SystemState;
@@ -67,15 +77,22 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
     private Button mCaptureBtn, mShootPhotoModeBtn, mRecordVideoModeBtn, mMapBtn;
     private ToggleButton mRecordBtn;
     private TextView recordingTime;
-    private TextView predictedClassLabel;
     private Handler handler;
+    BoundingBoxView mboxView;
 
     // OpenCV
     private static final String IMAGENET_CLASSES = "imagenet_classes.txt";
     private static final String MODEL_FILE = "pytorch_mobilenet.onnx";
+    private static final String[] classNames = {"background",
+            "aeroplane", "bicycle", "bird", "boat",
+            "bottle", "bus", "car", "cat", "chair",
+            "cow", "diningtable", "dog", "horse",
+            "motorbike", "person", "pottedplant",
+            "sheep", "sofa", "train", "tvmonitor"};
 
     private CameraBridgeViewBase mOpenCvCameraView;
     private Net opencvNet;
+    private Net caffeNet;
 
     private CNNExtractorService cnnService;
 
@@ -86,7 +103,6 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
             switch (status) {
                 case LoaderCallbackInterface.SUCCESS: {
                     Log.i(TAG,"OpenCV loaded successfully!");
-                    //mOpenCvCameraView.enableView();
                 }
                 break;
                 default: {
@@ -120,20 +136,20 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
 
         // OpenCV manager initialization
         OpenCVLoader.initDebug();
-        //mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
-
         // initialize implementation of CNNExtractorService
         this.cnnService = new CNNExtractorServiceImpl();
 
         // Neural Network model file reading
         // obtaining converted network
         String onnxModelPath = getPath(MODEL_FILE, this);
-
         if (onnxModelPath.trim().isEmpty()) {
             Log.i(TAG, "Failed to get model file");
             return;
         }
         opencvNet = cnnService.getConvertedNet(onnxModelPath, TAG);
+        String proto = getPath("MobileNetSSD_deploy.prototxt.txt", this);
+        String weights = getPath("MobileNetSSD_deploy.caffemodel", this);
+        caffeNet = Dnn.readNetFromCaffe(proto, weights);
 
         Camera camera = FPVApplication.getCameraInstance();
 
@@ -266,7 +282,7 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
         mShootPhotoModeBtn = (Button) findViewById(R.id.btn_shoot_photo_mode);
         mRecordVideoModeBtn = (Button) findViewById(R.id.btn_record_video_mode);
         mMapBtn = (Button) findViewById(R.id.btn_map);
-        predictedClassLabel = (TextView)  findViewById(R.id.classLabel); // For object recognition label
+        mboxView = (BoundingBoxView) findViewById(R.id.boundingBoxView);
 
 
         if (null != mVideoSurface) {
@@ -278,9 +294,8 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
         mShootPhotoModeBtn.setOnClickListener(this);
         mRecordVideoModeBtn.setOnClickListener(this);
         mMapBtn.setOnClickListener(this);
-
         recordingTime.setVisibility(View.INVISIBLE);
-        predictedClassLabel.setVisibility(View.VISIBLE);
+
 
 
         mRecordBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -351,12 +366,59 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
         // Convert Bitmap to Mat
         Mat tmp = new Mat (frame.getHeight(), frame.getWidth(), CvType.CV_8UC1);
         Utils.bitmapToMat(frame, tmp);
-        // Get path for pre-trained model file and obtain object recognition label
-        String classesPath = getPath(IMAGENET_CLASSES, this);
-        String predictedClass = cnnService.getPredictedLabel(tmp, opencvNet, classesPath);
-        // Use AsyncTask to set object recognition label
-        AsyncTaskRunner runner = new AsyncTaskRunner();
-        runner.execute(predictedClass);
+
+        //************************************************************* //
+        // Inferencing on same task as frame updating
+        //************************************************************* //
+        List<VisionDetRet> rectListFrame = new ArrayList<VisionDetRet>();
+        rectListFrame = getDetectionRects(tmp, caffeNet);
+        mboxView.setResults(rectListFrame);
+
+        //************************************************************* //
+        // Inferencing on asynchronous task as frame updating //
+        // NOTE: App crashes if frames are updating too fast //
+        //************************************************************* //
+        //AsyncTaskRunner runner = new AsyncTaskRunner();
+        //runner.execute(tmp);
+    }
+
+    // Run analysis using Neural Net and return rectangles for object detection
+    public List<VisionDetRet> getDetectionRects(Mat frame, Net neuralNet) {
+        final int IN_WIDTH = 300;
+        final int IN_HEIGHT = 300;
+        final float WH_RATIO = (float)IN_WIDTH / IN_HEIGHT;
+        final double IN_SCALE_FACTOR = 0.007843;
+        final double MEAN_VAL = 127.5;
+        final double THRESHOLD = 0.5;
+        List<VisionDetRet> rectList = new ArrayList<VisionDetRet>();
+
+        // Get a new frame
+        Imgproc.cvtColor(frame, frame, Imgproc.COLOR_RGBA2RGB);
+
+        // Forward image through network.
+        Mat blob = Dnn.blobFromImage(frame, IN_SCALE_FACTOR,
+                new Size(IN_WIDTH, IN_HEIGHT),
+                new Scalar(MEAN_VAL, MEAN_VAL, MEAN_VAL), /*swapRB*/false, /*crop*/false);
+        neuralNet.setInput(blob);
+        Mat detections = neuralNet.forward();
+        int cols = frame.cols();
+        int rows = frame.rows();
+        detections = detections.reshape(1, (int)detections.total() / 7);
+
+        for (int i = 0; i < detections.rows(); ++i) {
+            double confidence = detections.get(i, 2)[0];
+            if (confidence > THRESHOLD) {
+                int classId = (int)detections.get(i, 1)[0];
+                int left   = (int)(detections.get(i, 3)[0] * cols);
+                int top    = (int)(detections.get(i, 4)[0] * rows);
+                int right  = (int)(detections.get(i, 5)[0] * cols);
+                int bottom = (int)(detections.get(i, 6)[0] * rows);
+                String label = classNames[classId] + ": " + confidence;
+                VisionDetRet newVisionDetRect = new VisionDetRet(left, top, right, bottom, label);
+                rectList.add(newVisionDetRect);
+            }
+        }
+        return rectList;
     }
 
     public void showToast(final String msg) {
@@ -480,19 +542,104 @@ public class CameraActivity extends org.opencv.android.CameraActivity implements
     }
 
     // AsyncTask for putting object recognition label
-    private class AsyncTaskRunner extends AsyncTask<String, Void, String> {
+    private class AsyncTaskRunner extends AsyncTask<Mat, Void, List<VisionDetRet>> {
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
         }
 
-        protected String doInBackground(String... label) {
-            return label[0];
+        protected List<VisionDetRet> doInBackground(Mat... frame) {
+            List<VisionDetRet> rectListFrame = new ArrayList<VisionDetRet>();
+            rectListFrame = getDetectionRects(frame[0], caffeNet);
+            return rectListFrame;
         }
 
-        protected void onPostExecute(String result) {
-            predictedClassLabel.setText(result);
+        protected void onPostExecute(List<VisionDetRet> rectListFrame) {
+            mboxView.setResults(rectListFrame);
         }
     }
+
+    // BoundingBoxView class for overlaying boxes
+    public static class BoundingBoxView extends SurfaceView implements SurfaceHolder.Callback {
+
+        protected SurfaceHolder mSurfaceHolder;
+        private Paint mPaint;
+        private boolean mIsCreated;
+
+        public BoundingBoxView(Context context, AttributeSet attrs) {
+            super(context, attrs);
+            mSurfaceHolder = getHolder();
+            mSurfaceHolder.addCallback(this);
+            mSurfaceHolder.setFormat(PixelFormat.TRANSPARENT);
+            setZOrderOnTop(true);
+            mPaint = new Paint();
+            mPaint.setAntiAlias(true);
+            mPaint.setColor(Color.GREEN);
+            mPaint.setStrokeWidth(5f);
+            mPaint.setStyle(Paint.Style.STROKE);
+            mPaint.setTextSize(36);
+        }
+        @Override
+        public void surfaceChanged(SurfaceHolder surfaceHolder, int format, int width, int height) {
+        }
+        @Override
+        public void surfaceCreated(SurfaceHolder surfaceHolder) {
+            mIsCreated = true;
+        }
+        @Override
+        public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+            mIsCreated = false;
+        }
+        public void setResults(List<VisionDetRet> detRects)
+        {
+            if (!mIsCreated) {
+                return;
+            }
+            Canvas canvas = mSurfaceHolder.lockCanvas();
+            //Clear the last frame.
+            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
+            canvas.drawColor(Color.TRANSPARENT);
+            for (VisionDetRet detRet : detRects) {
+                Rect rect = new Rect(detRet.getLeft(), detRet.getTop(), detRet.getRight(), detRet.getBottom());
+                canvas.drawRect(rect, mPaint);
+                canvas.drawText(detRet.getLabel(), detRet.getLeft()+(detRet.getRight()/4), detRet.getBottom(), mPaint);
+            }
+            mSurfaceHolder.unlockCanvasAndPost(canvas);
+        }
+    }
+
+    // VisionDetRet class to create list of rectangles and labels
+    public final class VisionDetRet {
+        private int mLeft;
+        private int mTop;
+        private int mRight;
+        private int mBottom;
+        private String mLabel;
+        VisionDetRet() {}
+        public VisionDetRet(int l, int t, int r, int b, String lbl) {
+            mLeft = l;
+            mTop = t;
+            mRight = r;
+            mBottom = b;
+            mLabel = lbl;
+        }
+        public int getLeft() {
+            return mLeft;
+        }
+        public int getTop() {
+            return mTop;
+        }
+        public int getRight() {
+            return mRight;
+        }
+        public int getBottom() {
+            return mBottom;
+        }
+        public String getLabel() { return mLabel; }
+    }
+
+
+
+
 }
